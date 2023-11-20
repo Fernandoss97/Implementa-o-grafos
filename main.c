@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "listaAdj.h"
 #define true 1
 #define false 0
@@ -25,17 +26,25 @@ typedef struct grafo
   VERTICE *adj;
 } GRAFO;
 
-Grafo2 criaGrafo2(int v)
+GRAFO2 *criaGrafo2(int v)
 {
-  int i;
-  Grafo2 g = malloc(sizeof *g);
-  g->v = v;
-  g->a = 0;
-  g->A = malloc(v * sizeof(No *));
+  int i, j;
+
+  GRAFO2 *g = (GRAFO2 *)malloc(sizeof(GRAFO2));
+  g->vertices = v;
+  g->arestas = 0;
+
+  // Aloca a matriz de adjacência
+  g->adj = (int **)malloc(v * sizeof(int *));
   for (i = 0; i < v; i++)
   {
-    g->A[i] = NULL;
+    g->adj[i] = (int *)malloc(v * sizeof(int));
+    for (j = 0; j < v; j++)
+    {
+      g->adj[i][j] = 0; // Inicializa todas as entradas como 0
+    }
   }
+
   return g;
 }
 
@@ -65,22 +74,19 @@ ADJACENCIA *criaAdj(int v, int peso)
   return (temp);
 }
 
-void criaAresta2(Grafo2 g, int vi, int vf)
+bool criaAresta2(GRAFO2 *gr, int vi, int vf, TIPOPESO p)
 {
-  No *p;
+  if (!gr)
+    return false;
+  if ((vf < 0) || (vf >= gr->vertices))
+    return false;
+  if ((vi < 0) || (vi >= gr->vertices))
+    return false;
 
-  for (p = g->A[vi]; p != NULL; p = p->prox)
-  {
-    if (p->vertice == vf)
-    {
-      return;
-    }
-  }
-  p = malloc(sizeof(No));
-  p->vertice = vf;
-  p->prox = g->A[vi];
-  g->A[vi] = p;
-  g->a++;
+  gr->adj[vi][vf] = p;
+  gr->arestas++;
+
+  return true;
 }
 
 bool criaAresta(GRAFO *gr, int vi, int vf, TIPOPESO p)
@@ -234,25 +240,56 @@ void imprimeCaminho(int *anterior, int destino)
   }
 }
 
-void caminhoMaisCurto2(GRAFO *grafo, int origem, int destino)
+void caminhoMaisCurto2(GRAFO2 *grafo, int origem, int destino)
 {
   int *distancia = (int *)malloc(grafo->vertices * sizeof(int));
   int *anterior = (int *)malloc(grafo->vertices * sizeof(int));
   bool *visitado = (bool *)malloc(grafo->vertices * sizeof(bool));
 
-  inicializaDijkstra(grafo, origem, distancia, anterior, visitado);
-
-  int i;
-  for (i = 0; i < grafo->vertices - 1; i++)
+  // Inicialização
+  for (int i = 0; i < grafo->vertices; i++)
   {
-    int u = encontraVerticeMinimo(distancia, visitado, grafo->vertices);
-    visitado[u] = true;
-
-    relaxaVizinhos(grafo, u, distancia, anterior);
+    distancia[i] = INT_MAX;
+    anterior[i] = -1;
+    visitado[i] = false;
   }
 
+  distancia[origem] = 0;
+
+  // Encontrar o caminho mais curto
+  for (int count = 0; count < grafo->vertices - 1; count++)
+  {
+    int u = -1;
+
+    // Escolher o vértice de menor distância não visitado
+    for (int i = 0; i < grafo->vertices; i++)
+    {
+      if (!visitado[i] && (u == -1 || distancia[i] < distancia[u]))
+        u = i;
+    }
+
+    visitado[u] = true;
+
+    // Relaxar vizinhos
+    for (int v = 0; v < grafo->vertices; v++)
+    {
+      if (!visitado[v] && grafo->adj[u][v] && distancia[u] != INT_MAX &&
+          distancia[u] + grafo->adj[u][v] < distancia[v])
+      {
+        distancia[v] = distancia[u] + grafo->adj[u][v];
+        anterior[v] = u;
+      }
+    }
+  }
+
+  // Imprimir o caminho mais curto
   printf("Caminho mais curto de %d para %d: ", origem, destino);
-  imprimeCaminho(anterior, destino);
+  int atual = destino;
+  while (atual != -1)
+  {
+    printf("%d ", atual);
+    atual = anterior[atual];
+  }
   printf("\n");
 
   free(distancia);
@@ -260,24 +297,24 @@ void caminhoMaisCurto2(GRAFO *grafo, int origem, int destino)
   free(visitado);
 }
 
-void imprimeGrafo2(Grafo2 g)
-{
-  int i;
+// void imprimeGrafo2(GRAFO2 g)
+// {
+//   int i;
 
-  printf("\nVertices: %d. Arestas: %d. \n", g->v, g->a);
-  for (i = 0; i < g->v; i++)
-  {
-    printf("Vertice %d: ", i);
+//   printf("\nVertices: %d. Arestas: %d. \n", g->v, g->a);
+//   for (i = 0; i < g->v; i++)
+//   {
+//     printf("Vertice %d: ", i);
 
-    No *p = g->A[i];
-    while (p != NULL)
-    {
-      printf("%d ", p->vertice);
-      p = p->prox;
-    }
-    printf("\n");
-  }
-}
+//     No *p = g->A[i];
+//     while (p != NULL)
+//     {
+//       printf("%d ", p->vertice);
+//       p = p->prox;
+//     }
+//     printf("\n");
+//   }
+// }
 
 void imprime(GRAFO *gr)
 {
@@ -301,18 +338,32 @@ void imprime(GRAFO *gr)
 
 int main()
 {
-  GRAFO *g = criaGrafo(5);
+  int V = 6;
+  GRAFO2 *grafo = criaGrafo2(V);
 
-  criaAresta(g, 0, 1, 3);
-  criaAresta(g, 0, 2, 2);
-  criaAresta(g, 1, 2, 1);
-  criaAresta(g, 1, 3, 5);
-  criaAresta(g, 2, 3, 3);
-  criaAresta(g, 2, 4, 6);
-  criaAresta(g, 3, 4, 4);
+  // Preencher a matriz de adjacência
+  grafo->adj = (int *[]){(int[]){0, 1, 4, 0, 0, 0}, (int[]){1, 0, 4, 2, 7, 0}, (int[]){4, 4, 0, 3, 5, 0}, (int[]){0, 2, 3, 0, 4, 6}, (int[]){0, 7, 5, 4, 0, 7}, (int[]){0, 0, 0, 6, 7, 0}};
 
-  imprime(g);
-  caminhoMaisCurto2(g, 0, 4);
+  for (int i = 0; i < V; i++)
+  {
+    for (int j = 0; j < V; j++)
+    {
+      if (grafo->adj[i][j] != 0)
+      {
+        criaAresta2(grafo, i, j, grafo->adj[i][j]);
+      }
+    }
+  }
+
+  caminhoMaisCurto2(grafo, 0, 4);
+
+  // Liberar memória
+  for (int i = 0; i < V; i++)
+  {
+    free(grafo->adj[i]);
+  }
+  free(grafo->adj);
+  free(grafo);
 
   return 0;
 }

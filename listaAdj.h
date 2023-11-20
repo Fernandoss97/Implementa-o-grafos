@@ -7,7 +7,7 @@ struct no
 
 typedef struct grafo2
 {
-  No **A;
-  int v;
-  int a;
-} *Grafo2;
+  int vertices;
+  int arestas;
+  int **adj; // Matriz de adjacência
+} GRAFO2;

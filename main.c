@@ -174,6 +174,92 @@ void buscaProfundidade(GRAFO *gr, int verticeInicial)
   free(visitado);
 }
 
+void inicializaDijkstra(GRAFO *grafo, int origem, int *distancia, int *anterior, bool *visitado)
+{
+  int i;
+  for (i = 0; i < grafo->vertices; i++)
+  {
+    distancia[i] = 300000;
+    anterior[i] = -1;
+    visitado[i] = false;
+  }
+
+  distancia[origem] = 0;
+}
+
+int encontraVerticeMinimo(int *distancia, bool *visitado, int vertices)
+{
+  int minimo = 300000, minimoIndice = -1;
+  int i;
+  for (i = 0; i < vertices; i++)
+  {
+    if (!visitado[i] && distancia[i] < minimo)
+    {
+      minimo = distancia[i];
+      minimoIndice = i;
+    }
+  }
+  return minimoIndice;
+}
+
+void relaxaVizinhos(GRAFO *grafo, int u, int *distancia, int *anterior)
+{
+  ADJACENCIA *atual = grafo->adj[u].cab;
+
+  while (atual != NULL)
+  {
+    int v = atual->vertice;
+    int pesoUV = atual->peso;
+
+    if (distancia[u] != 300000 && distancia[u] + pesoUV < distancia[v])
+    {
+      distancia[v] = distancia[u] + pesoUV;
+      anterior[v] = u;
+    }
+
+    atual = atual->prox;
+  }
+}
+
+void imprimeCaminho(int *anterior, int destino)
+{
+  if (anterior[destino] != -1)
+  {
+    imprimeCaminho(anterior, anterior[destino]);
+    printf("-> %d ", destino);
+  }
+  else
+  {
+    printf("%d ", destino);
+  }
+}
+
+void caminhoMaisCurto2(GRAFO *grafo, int origem, int destino)
+{
+  int *distancia = (int *)malloc(grafo->vertices * sizeof(int));
+  int *anterior = (int *)malloc(grafo->vertices * sizeof(int));
+  bool *visitado = (bool *)malloc(grafo->vertices * sizeof(bool));
+
+  inicializaDijkstra(grafo, origem, distancia, anterior, visitado);
+
+  int i;
+  for (i = 0; i < grafo->vertices - 1; i++)
+  {
+    int u = encontraVerticeMinimo(distancia, visitado, grafo->vertices);
+    visitado[u] = true;
+
+    relaxaVizinhos(grafo, u, distancia, anterior);
+  }
+
+  printf("Caminho mais curto de %d para %d: ", origem, destino);
+  imprimeCaminho(anterior, destino);
+  printf("\n");
+
+  free(distancia);
+  free(anterior);
+  free(visitado);
+}
+
 void imprimeGrafo2(Grafo2 g)
 {
   int i;
@@ -215,57 +301,18 @@ void imprime(GRAFO *gr)
 
 int main()
 {
-  GRAFO *g = criaGrafo(15);
+  GRAFO *g = criaGrafo(5);
 
-  criaAresta(g, 0, 1, 0);
-  criaAresta(g, 0, 2, 0);
-  criaAresta(g, 1, 3, 0);
-  criaAresta(g, 1, 4, 0);
-  criaAresta(g, 1, 5, 0);
-  criaAresta(g, 3, 6, 0);
-  criaAresta(g, 3, 7, 0);
-  criaAresta(g, 5, 8, 0);
-  criaAresta(g, 5, 9, 0);
-  criaAresta(g, 7, 10, 0);
-  criaAresta(g, 7, 11, 0);
-  criaAresta(g, 7, 12, 0);
-  criaAresta(g, 9, 13, 0);
-  criaAresta(g, 9, 14, 0);
+  criaAresta(g, 0, 1, 3);
+  criaAresta(g, 0, 2, 2);
+  criaAresta(g, 1, 2, 1);
+  criaAresta(g, 1, 3, 5);
+  criaAresta(g, 2, 3, 3);
+  criaAresta(g, 2, 4, 6);
+  criaAresta(g, 3, 4, 4);
 
   imprime(g);
-  printf("\n");
-
-  int *vis = (int *)malloc(g->vertices * sizeof(int));
-
-  // Define o vertice de partida
-  int vertice = 0;
-
-  // Busca em largura
-  printf("Busca em largura a partir do vertice %d:\n", vertice);
-  buscaLargura(g, vertice, vis);
-  free(vis);
-
-  GRAFO *g2 = criaGrafo(15);
-
-  criaAresta(g2, 0, 1, 0);
-  criaAresta(g2, 1, 2, 0);
-  criaAresta(g2, 1, 4, 0);
-  criaAresta(g2, 2, 3, 0);
-  criaAresta(g2, 2, 4, 0);
-  criaAresta(g2, 2, 9, 0);
-  criaAresta(g2, 3, 4, 0);
-  criaAresta(g2, 4, 5, 0);
-  criaAresta(g2, 4, 6, 0);
-  criaAresta(g2, 4, 7, 0);
-  criaAresta(g2, 5, 6, 0);
-  criaAresta(g2, 7, 8, 0);
-  criaAresta(g2, 7, 9, 0);
-
-  imprime(g2);
-
-  // Busca em profundidade
-  printf("\n");
-  buscaProfundidade(g2, vertice);
+  caminhoMaisCurto2(g, 0, 4);
 
   return 0;
 }
